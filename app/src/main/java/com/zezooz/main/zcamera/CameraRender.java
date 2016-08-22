@@ -1,6 +1,8 @@
 package com.zezooz.main.zcamera;
 
 import android.annotation.TargetApi;
+import android.app.Activity;
+import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.media.CamcorderProfile;
@@ -11,6 +13,7 @@ import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.widget.Toast;
 
@@ -31,7 +34,7 @@ import javax.microedition.khronos.opengles.GL10;
  */
 
 @TargetApi(Build.VERSION_CODES.HONEYCOMB)
-public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFrameAvailableListener{
+public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFrameAvailableListener {
 
     private final String vss =
             "attribute vec2 vPosition;\n" +
@@ -55,7 +58,7 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
     private FloatBuffer pVertex;
     private FloatBuffer pTexCoord;
     private int hProgram;
-private boolean mIsRecording;
+    private boolean mIsRecording;
     private MediaRecorder mMediaRecorder;
     private Camera mCamera;
     private SurfaceTexture mSTexture;
@@ -66,24 +69,23 @@ private boolean mIsRecording;
     private CameraSurfaceView mView;
 
 
-
     public static final int MEDIA_TYPE_IMAGE = 1;
     public static final int MEDIA_TYPE_VIDEO = 2;
 
-    CameraRender ( CameraSurfaceView view ) {
+    CameraRender(CameraSurfaceView view) {
         mView = view;
-        float[] vtmp = { 1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f };
-        float[] ttmp = { 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f };
-        pVertex = ByteBuffer.allocateDirect(8*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
-        pVertex.put ( vtmp );
+        float[] vtmp = {1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f};
+//        float[] ttmp = {1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f};
+        float[] ttmp = {  1.0f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f,  0.0f, 1.0f,};
+        pVertex = ByteBuffer.allocateDirect(8 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        pVertex.put(vtmp);
         pVertex.position(0);
-        pTexCoord = ByteBuffer.allocateDirect(8*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
-        pTexCoord.put ( ttmp );
+        pTexCoord = ByteBuffer.allocateDirect(8 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        pTexCoord.put(ttmp);
         pTexCoord.position(0);
 
         mSurfaceHolder = view.getHolder();
     }
-
 
 
     public void startMediaRecorder() {
@@ -136,7 +138,7 @@ private boolean mIsRecording;
 //                Environment.DIRECTORY_PICTURES), "Camera App");
         File mediaStorageDir = null;
         try {
-            mediaStorageDir = new File(Environment.getExternalStorageDirectory().getCanonicalFile(),"/nick.mp4");
+            mediaStorageDir = new File(Environment.getExternalStorageDirectory().getCanonicalFile(), "/nick.mp4");
             return mediaStorageDir;
         } catch (IOException e) {
             e.printStackTrace();
@@ -169,12 +171,10 @@ private boolean mIsRecording;
     }
 
 
-
-
-    public void close()
-    {
+    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
+    public void close() {
         mUpdateST = false;
-//        mSTexture.release();
+        mSTexture.release();
         mCamera.stopPreview();
         mCamera.release();
         mCamera = null;
@@ -182,32 +182,86 @@ private boolean mIsRecording;
     }
 
 
-    public void onSurfaceCreated ( GL10 unused, EGLConfig config ) {
+    public void onSurfaceCreated(GL10 unused, EGLConfig config) {
         //String extensions = GLES20.glGetString(GLES20.GL_EXTENSIONS);
         //Log.i("mr", "Gl extensions: " + extensions);
         //Assert.assertTrue(extensions.contains("OES_EGL_image_external"));
 //       String vss = Utils.getShaderString(R.raw.vertex);
 //       String fss = Utils.getShaderString(R.raw.fragment);
         initTex();
-        mSTexture = new SurfaceTexture ( hTex[0] );
+        mSTexture = new SurfaceTexture(hTex[0]);
         mSTexture.setOnFrameAvailableListener(this);
 
-        mCamera = Camera.open();
+        initPreview();
+//        mCamera = Camera.open();
         try {
             mCamera.setPreviewTexture(mSTexture);
-        } catch ( IOException ioe ) {
+        } catch (IOException ioe) {
         }
 
-        GLES20.glClearColor ( 1.0f, 1.0f, 0.0f, 1.0f );
+        GLES20.glClearColor(1.0f, 1.0f, 0.0f, 1.0f);
 
-        hProgram = loadShader ( vss, fss );
+        hProgram = loadShader(vss, fss);
     }
 
-    public void onDrawFrame ( GL10 unused ) {
-        GLES20.glClear( GLES20.GL_COLOR_BUFFER_BIT );
+    private void initPreview() {
+        mCamera = Camera.open();
+        setCameraDisplayOrientation(Camera.CameraInfo.CAMERA_FACING_FRONT, mCamera);
+        setFocusMode();
+//        mCamera.startPreview();
+    }
 
-        synchronized(this) {
-            if ( mUpdateST ) {
+    private void setFocusMode() {
+        Camera.Parameters parameters = mCamera.getParameters();
+        List<String> allFocus = parameters.getSupportedFocusModes();
+        if (allFocus.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO)) {
+            parameters.setFocusMode(
+                    Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+        } else if (allFocus.contains(Camera.Parameters.FLASH_MODE_AUTO)) {
+            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+        }
+        mCamera.setParameters(parameters);
+    }
+
+
+    private void setCameraDisplayOrientation(int cameraId, android.hardware.Camera camera) {
+        Activity context = (Activity) Utils.context;
+        android.hardware.Camera.CameraInfo info =
+                new android.hardware.Camera.CameraInfo();
+        android.hardware.Camera.getCameraInfo(cameraId, info);
+        int rotation = context.getWindowManager().getDefaultDisplay().getRotation();
+        int degrees = 0;
+        switch (rotation) {
+            case Surface.ROTATION_0:
+                degrees = 0;
+                break;
+            case Surface.ROTATION_90:
+                degrees = 90;
+                break;
+            case Surface.ROTATION_180:
+                degrees = 180;
+                break;
+            case Surface.ROTATION_270:
+                degrees = 270;
+                break;
+        }
+
+        int result;
+        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            result = (info.orientation + degrees) % 360;
+            result = (360 - result) % 360;  // compensate the mirror
+        } else {  // back-facing
+            result = (info.orientation - degrees + 360) % 360;
+        }
+        camera.setDisplayOrientation(result);
+    }
+
+
+    public void onDrawFrame(GL10 unused) {
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+        synchronized (this) {
+            if (mUpdateST) {
                 mSTexture.updateTexImage();
                 mUpdateST = false;
             }
@@ -216,15 +270,15 @@ private boolean mIsRecording;
         GLES20.glUseProgram(hProgram);
 
         int ph = GLES20.glGetAttribLocation(hProgram, "vPosition");
-        int tch = GLES20.glGetAttribLocation ( hProgram, "vTexCoord" );
-        int th = GLES20.glGetUniformLocation ( hProgram, "sTexture" );
+        int tch = GLES20.glGetAttribLocation(hProgram, "vTexCoord");
+        int th = GLES20.glGetUniformLocation(hProgram, "sTexture");
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, hTex[0]);
         GLES20.glUniform1i(th, 0);
 
-        GLES20.glVertexAttribPointer(ph, 2, GLES20.GL_FLOAT, false, 4*2, pVertex);
-        GLES20.glVertexAttribPointer(tch, 2, GLES20.GL_FLOAT, false, 4*2, pTexCoord );
+        GLES20.glVertexAttribPointer(ph, 2, GLES20.GL_FLOAT, false, 4 * 2, pVertex);
+        GLES20.glVertexAttribPointer(tch, 2, GLES20.GL_FLOAT, false, 4 * 2, pTexCoord);
         GLES20.glEnableVertexAttribArray(ph);
         GLES20.glEnableVertexAttribArray(tch);
 
@@ -232,31 +286,33 @@ private boolean mIsRecording;
         GLES20.glFlush();
     }
 
-    public void onSurfaceChanged ( GL10 unused, int width, int height ) {
-        GLES20.glViewport( 0, 0, width, height );
+    public void onSurfaceChanged(GL10 unused, int width, int height) {
+        GLES20.glViewport(0, 0, width, height);
+
         Camera.Parameters param = mCamera.getParameters();
         List<Camera.Size> psize = param.getSupportedPreviewSizes();
-        if ( psize.size() > 0 ) {
+        if (psize.size() > 0) {
             int i;
-            for ( i = 0; i < psize.size(); i++ ) {
-                if ( psize.get(i).width < width || psize.get(i).height < height )
+            for (i = 0; i < psize.size(); i++) {
+                if (psize.get(i).width < width || psize.get(i).height < height)
                     break;
             }
-            if ( i > 0 )
+            if (i > 0)
                 i--;
             param.setPreviewSize(psize.get(i).width, psize.get(i).height);
             //Log.i("mr","ssize: "+psize.get(i).width+", "+psize.get(i).height);
         }
 
-        param.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
-        param.set("orientation", "landscape");
-        mCamera.setParameters ( param );
+//        param.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+//        param.set("orientation", "landscape");
+        param.set("orientation", "portrait");
+        mCamera.setParameters(param);
         mCamera.startPreview();
     }
 
     private void initTex() {
         hTex = new int[1];
-        GLES20.glGenTextures ( 1, hTex, 0 );
+        GLES20.glGenTextures(1, hTex, 0);
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, hTex[0]);
         GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
         GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
@@ -265,15 +321,15 @@ private boolean mIsRecording;
     }
 
     private void deleteTex() {
-        GLES20.glDeleteTextures ( 1, hTex, 0 );
+        GLES20.glDeleteTextures(1, hTex, 0);
     }
 
-    public synchronized void onFrameAvailable ( SurfaceTexture st ) {
+    public synchronized void onFrameAvailable(SurfaceTexture st) {
         mUpdateST = true;
         mView.requestRender();
     }
 
-    private static int loadShader ( String vss, String fss ) {
+    private static int loadShader(String vss, String fss) {
         int vshader = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
         GLES20.glShaderSource(vshader, vss);
         GLES20.glCompileShader(vshader);
@@ -281,7 +337,7 @@ private boolean mIsRecording;
         GLES20.glGetShaderiv(vshader, GLES20.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
             Log.e("Shader", "Could not compile vshader");
-            Log.v("Shader", "Could not compile vshader:"+GLES20.glGetShaderInfoLog(vshader));
+            Log.v("Shader", "Could not compile vshader:" + GLES20.glGetShaderInfoLog(vshader));
             GLES20.glDeleteShader(vshader);
             vshader = 0;
         }
@@ -292,7 +348,7 @@ private boolean mIsRecording;
         GLES20.glGetShaderiv(fshader, GLES20.GL_COMPILE_STATUS, compiled, 0);
         if (compiled[0] == 0) {
             Log.e("Shader", "Could not compile fshader");
-            Log.v("Shader", "Could not compile fshader:"+GLES20.glGetShaderInfoLog(fshader));
+            Log.v("Shader", "Could not compile fshader:" + GLES20.glGetShaderInfoLog(fshader));
             GLES20.glDeleteShader(fshader);
             fshader = 0;
         }

@@ -17,7 +17,6 @@ public class VideoRecordActivity extends AppCompatActivity {
     private PowerManager.WakeLock mWL;
     private ImageButton recordButton;
     private ImageButton  stopButton;
-
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -25,16 +24,16 @@ public class VideoRecordActivity extends AppCompatActivity {
         Utils.context = this;
         // full screen & full brightness
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON, WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LOW_PROFILE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_IMMERSIVE);
+//        getWindow().getDecorView().setSystemUiVisibility(
+//                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+//                        | View.SYSTEM_UI_FLAG_LOW_PROFILE
+//                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+//                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+//                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+//                        | View.SYSTEM_UI_FLAG_IMMERSIVE);
 
         mWL = ((PowerManager) getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.FULL_WAKE_LOCK, "WakeLock");
         mWL.acquire();
