@@ -3,16 +3,24 @@ package com.zezooz.main.zcamera;
 import android.annotation.TargetApi;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
+import android.os.Environment;
 import android.util.Log;
+import android.view.SurfaceHolder;
+import android.widget.Toast;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -47,13 +55,20 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
     private FloatBuffer pVertex;
     private FloatBuffer pTexCoord;
     private int hProgram;
-
+private boolean mIsRecording;
+    private MediaRecorder mMediaRecorder;
     private Camera mCamera;
     private SurfaceTexture mSTexture;
 
+    private SurfaceHolder mSurfaceHolder;
     private boolean mUpdateST = false;
 
     private CameraSurfaceView mView;
+
+
+
+    public static final int MEDIA_TYPE_IMAGE = 1;
+    public static final int MEDIA_TYPE_VIDEO = 2;
 
     CameraRender ( CameraSurfaceView view ) {
         mView = view;
@@ -65,7 +80,96 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
         pTexCoord = ByteBuffer.allocateDirect(8*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
         pTexCoord.put ( ttmp );
         pTexCoord.position(0);
+
+        mSurfaceHolder = view.getHolder();
     }
+
+
+
+    public void startMediaRecorder() {
+        mCamera.unlock();
+        mIsRecording = true;
+        mMediaRecorder = new MediaRecorder();
+        mMediaRecorder.reset();
+        mMediaRecorder.setCamera(mCamera);
+        mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+        CamcorderProfile mCamcorderProfile = CamcorderProfile.get(Camera.CameraInfo.CAMERA_FACING_BACK,
+                CamcorderProfile.QUALITY_480P);
+        mMediaRecorder.setProfile(mCamcorderProfile);
+        mMediaRecorder.setOutputFile(getOutputMediaFile(MEDIA_TYPE_VIDEO).toString());
+//        mMediaRecorder.setPreviewDisplay(mSurfaceHolder.getSurface());
+
+        try {
+            mMediaRecorder.prepare();
+        } catch (Exception e) {
+            mIsRecording = false;
+//            Toast.makeText(this, "fail", Toast.LENGTH_LONG).show();
+            e.printStackTrace();
+            mCamera.lock();
+        }
+        mMediaRecorder.start();
+    }
+
+    public void stopMediaRecorder() {
+        if (mMediaRecorder != null) {
+            if (mIsRecording) {
+                mMediaRecorder.stop();
+                mCamera.lock();
+                mMediaRecorder.reset();
+                mMediaRecorder.release();
+                mMediaRecorder = null;
+                mIsRecording = false;
+                try {
+                    mCamera.reconnect();
+                } catch (IOException e) {
+//                    Toast.makeText(this, "reconect fail", Toast.LENGTH_LONG).show();
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+
+    private File getOutputMediaFile(int type) {
+//        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
+//                Environment.DIRECTORY_PICTURES), "Camera App");
+        File mediaStorageDir = null;
+        try {
+            mediaStorageDir = new File(Environment.getExternalStorageDirectory().getCanonicalFile(),"/nick.mp4");
+            return mediaStorageDir;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        // This location works best if you want the created images to be shared
+        // between applications and persist after your app has been uninstalled.
+
+        // Create the storage directory if it does not exist
+        if (!mediaStorageDir.exists()) {
+            if (!mediaStorageDir.mkdirs()) {
+                Log.d("linc", "failed to create directory");
+                return null;
+            }
+        }
+
+        // Create a media file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        File mediaFile;
+        if (type == MEDIA_TYPE_IMAGE) {
+            mediaFile = new File(mediaStorageDir.getPath() + File.separator +
+                    "IMG_" + timeStamp + ".jpg");
+        } else if (type == MEDIA_TYPE_VIDEO) {
+            mediaFile = new File(mediaStorageDir.getPath() + File.separator +
+                    "VID_" + timeStamp + ".mp4");
+        } else {
+            return null;
+        }
+
+        return mediaFile;
+    }
+
+
+
 
     public void close()
     {
