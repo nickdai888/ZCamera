@@ -82,7 +82,7 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
         //String extensions = GLES20.glGetString(GLES20.GL_EXTENSIONS);
         //Log.i("mr", "Gl extensions: " + extensions);
         //Assert.assertTrue(extensions.contains("OES_EGL_image_external"));
-       String vss = Utils.getShaderString(R.raw.vertex);
+//       String vss = Utils.getShaderString(R.raw.vertex);
 //       String fss = Utils.getShaderString(R.raw.fragment);
         initTex();
         mSTexture = new SurfaceTexture ( hTex[0] );
@@ -143,6 +143,8 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
             param.setPreviewSize(psize.get(i).width, psize.get(i).height);
             //Log.i("mr","ssize: "+psize.get(i).width+", "+psize.get(i).height);
         }
+
+        param.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
         param.set("orientation", "landscape");
         mCamera.setParameters ( param );
         mCamera.startPreview();

@@ -24,7 +24,7 @@ public class Utils {
             String line = "";
             while ((line = in.readLine()) != null)
             {
-                buffer.append(line);
+                buffer.append(line + "\n");
             }
             return buffer.toString();
         } catch (Exception e)
