@@ -418,17 +418,17 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
         float videoRatio = (float)VideoPreviewWidth / (float)VideoPreviewHeight;
         float containerRatio = (float)videoContainerWidth / (float)videoContainerHeight;
         if(videoRatio < containerRatio) { // fixed height
-            ox = (int)((float)videoContainerWidth *(containerRatio - videoRatio)/2.0);
-            oy = 0;
+
             glViewHeight = videoContainerHeight;
             glViewWidth = (int)((float)glViewHeight *  videoRatio);
-
+            ox = (videoContainerWidth - glViewWidth)/2;
+            oy = 0;
         }
         else {
-            oy = (int)((float)videoContainerHeight *(-containerRatio + videoRatio)/2.0);
-            ox = 0;
             glViewWidth = videoContainerWidth;
             glViewHeight = (int)((float)glViewWidth / videoRatio);
+            oy = (videoContainerHeight - glViewHeight)/2;
+            ox = 0;
         }
 
 

@@ -2,6 +2,7 @@
 <RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
+    android:id = "@+id/rootContainer"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
     <!-- 显示视频预览的SurfaceView -->
@@ -20,6 +21,7 @@
             android:id="@+id/record"
             android:layout_width="66dp"
             android:layout_height="66dp"
+            android:layout_marginBottom="20dp"
             android:scaleType="fitCenter"
             android:onClick="onClick"
             android:background="@android:color/transparent"
