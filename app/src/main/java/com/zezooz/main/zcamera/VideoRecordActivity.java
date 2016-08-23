@@ -2,27 +2,34 @@ package com.zezooz.main.zcamera;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.os.Build;
 import android.os.PowerManager;
 import android.os.Bundle;
-import android.util.TypedValue;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
-import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
-public class VideoRecordActivity extends Activity {
+public class VideoRecordActivity extends Activity implements View.OnClickListener {
+    private View main;
     private CameraSurfaceView mView;
     private PowerManager.WakeLock mWL;
     private ImageButton recordButton;
-//    private ImageButton stopButton;
+    //    private ImageButton stopButton;
     private boolean buttonStatusRecording;
+    private boolean showNavigationBar;
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     @Override
@@ -30,7 +37,11 @@ public class VideoRecordActivity extends Activity {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
-        setContentView(R.layout.activity_video_record);
+        main = getLayoutInflater().inflate(R.layout.activity_video_record, null);
+//        main.setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
+        main.setOnClickListener(this);
+        setContentView(main);
+//        setContentView(R.layout.activity_video_record);
         // full screen & full brightness
         setWindowMode();
 
@@ -41,43 +52,53 @@ public class VideoRecordActivity extends Activity {
         mWL.acquire();
 
         mView = (CameraSurfaceView) this.findViewById(R.id.surfaceview);
-//      mView = new CameraSurfaceView(this);
-//      setContentView(mView);
-        recordButton = (ImageButton)this.findViewById(R.id.record);
-//        stopButton = (ImageButton)this.findViewById(R.id.stop);
-//        stopButton.setVisibility(View.VISIBLE);
+        recordButton = (ImageButton) this.findViewById(R.id.record);
+        recordButton.setOnClickListener(this);
+        if (checkDeviceHasNavigationBar(this)) {
+            showNavigationBar = true;
+            setNavHidenHandler();
+        } else {
+            showNavigationBar = false;
+        }
         updateRecordButton();
+        updateToolBarPosition();
+
     }
 
-    public int getStatusBarHeight() {
-        Class<?> c = null;
-        Object obj = null;
-        Field field = null;
-        int x = 0, statusBarHeight = 0;
+
+    private void setNavHidenHandler() {
+//        IntentFilter intentfilter = new IntentFilter();
+//        intentfilter.addAction(ACTION_DISPLAY_NAV_BAR);
+//        intentfilter.addAction(ACTION_HIDE_NAV_BAR);
+//        this.registerReceiver(new MyReceiver(),intentfilter);
+
+    }
+
+    public static boolean checkDeviceHasNavigationBar(Context context) {
+        boolean hasNavigationBar = false;
+        Resources rs = context.getResources();
+        int id = rs.getIdentifier("config_showNavigationBar", "bool", "android");
+        if (id > 0) {
+            hasNavigationBar = rs.getBoolean(id);
+        }
         try {
-            c = Class.forName("com.android.internal.R$dimen");
-            obj = c.newInstance();
-            field = c.getField("status_bar_height");
-            x = Integer.parseInt(field.get(obj).toString());
-            statusBarHeight = getResources().getDimensionPixelSize(x);
-        } catch (Exception e1) {
-            e1.printStackTrace();
-        }
-        return statusBarHeight;
-    }
+            Class systemPropertiesClass = Class.forName("android.os.SystemProperties");
+            Method m = systemPropertiesClass.getMethod("get", String.class);
+            String navBarOverride = (String) m.invoke(systemPropertiesClass, "qemu.hw.mainkeys");
+            if ("1".equals(navBarOverride)) {
+                hasNavigationBar = false;
+            } else if ("0".equals(navBarOverride)) {
+                hasNavigationBar = true;
+            }
+        } catch (Exception e) {
 
-    public int getActionBarHeight() {
-        TypedValue tv = new TypedValue();
-        int actionBarHeight = 0;
-        if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true))// 如果资源是存在的、有效的
-        {
-            actionBarHeight = TypedValue.complexToDimensionPixelSize(tv.data, getResources().getDisplayMetrics());
         }
-        return actionBarHeight;
+        return hasNavigationBar;
+
     }
 
 
-    private void setWindowMode(){
+    private void setWindowMode() {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON, WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -86,7 +107,7 @@ public class VideoRecordActivity extends Activity {
         Window window = getWindow();
         if (android.os.Build.VERSION.SDK_INT > 18) {
             window.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS, WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-////            window.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION, WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+            window.setFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION, WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
 //            RelativeLayout relativeLayout = (RelativeLayout) findViewById(R.id.rootContainer);
 //            relativeLayout.setPadding(0, getActionBarHeight()+getStatusBarHeight(), 0, 0);
 
@@ -98,33 +119,48 @@ public class VideoRecordActivity extends Activity {
 //                            | View.SYSTEM_UI_FLAG_FULLSCREEN
 //                            | View.SYSTEM_UI_FLAG_IMMERSIVE);
 
-            window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
-        }
-        else
-        {
-
+//            window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
+//                        window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
 
         }
     }
+
+    private int getNavigationBarHeight() {
+        Resources resources = this.getResources();
+        int resourceId = resources.getIdentifier("navigation_bar_height", "dimen", "android");
+        int height = resources.getDimensionPixelSize(resourceId);
+//        Log.v("dbw", "Navi height:" + height);
+        return height;
+    }
+
     private void updateRecordButton() {
         if (buttonStatusRecording) {
-//            recordButton.setBackgroundResource(R.drawable.player_record);
             recordButton.setImageDrawable(getResources().getDrawable(R.drawable.player_stop));
-//            recordButton.setImageDrawable( ContextCompat.getDrawable(this, R.drawable.player_record));
-
         } else {
-//            recordButton.setBackgroundResource(R.drawable.player_stop);
             recordButton.setImageDrawable(getResources().getDrawable(R.drawable.player_record));
         }
     }
 
+    private void updateToolBarPosition() {
+
+        int nav_h;
+        if (showNavigationBar) {
+            nav_h = getNavigationBarHeight();
+        } else {
+            nav_h = 20;
+        }
+        LinearLayout toolbar = (LinearLayout) this.findViewById(R.id.toolbar);
+        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) toolbar.getLayoutParams();
+        lp.bottomMargin = nav_h;
+        toolbar.setLayoutParams(lp);
+    }
+
     public void onClick(View source) {
         switch (source.getId()) {
-            // 单击录制按钮
             case R.id.record:
-                if(!buttonStatusRecording) {
+                if (!buttonStatusRecording) {
                     mView.getCameraRender().startMediaRecorder();
-                }else{
+                } else {
                     mView.getCameraRender().stopMediaRecorder();
                 }
                 buttonStatusRecording = !buttonStatusRecording;
