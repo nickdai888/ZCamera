@@ -145,6 +145,8 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
         mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
         CamcorderProfile mCamcorderProfile = CamcorderProfile.get(ChooseFrontCamera ? Camera.CameraInfo.CAMERA_FACING_FRONT:Camera.CameraInfo.CAMERA_FACING_BACK,
                 CamcorderProfile.QUALITY_480P);
+        mCamcorderProfile.fileFormat = MediaRecorder.OutputFormat.MPEG_4;
+        mCamcorderProfile.videoCodec = MediaRecorder.VideoEncoder.MPEG_4_SP;
         mMediaRecorder.setProfile(mCamcorderProfile);
         mMediaRecorder.setOutputFile(getOutputMediaFile(MEDIA_TYPE_VIDEO).toString());
 //        mMediaRecorder.setPreviewDisplay(mSurfaceHolder.getSurface());
