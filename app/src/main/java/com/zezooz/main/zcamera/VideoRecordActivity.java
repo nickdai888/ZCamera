@@ -10,12 +10,14 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.Build;
+import android.os.Handler;
 import android.os.PowerManager;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.animation.AlphaAnimation;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -62,8 +64,32 @@ public class VideoRecordActivity extends Activity implements View.OnClickListene
         }
         updateRecordButton();
         updateToolBarPosition();
-
+        showControlPanelDelay();
     }
+
+    private void showControlPanelDelay(){
+       final LinearLayout toolbar = (LinearLayout) this.findViewById(R.id.toolbar);
+        main.postDelayed(new Runnable(){
+            public void run() {
+                //execute the task
+//
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+                    toolbar.setAlpha(0f);
+                }
+
+                toolbar.setVisibility(View.VISIBLE);
+                // Animate the content view to 100% opacity, and clear any animation
+                // listener set on the view.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR1) {
+                    toolbar.animate()
+                            .alpha(1f)
+                            .setDuration(300)
+                            .setListener(null);
+                }
+            }
+        }, 1000);
+    }
+
 
 
     private void setNavHidenHandler() {
