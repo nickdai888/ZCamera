@@ -3,6 +3,7 @@ package com.zezooz.main.zcamera;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Point;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.media.CamcorderProfile;
@@ -13,6 +14,7 @@ import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
+import android.util.Size;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.widget.Toast;
@@ -142,7 +144,7 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
         mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
         mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
         CamcorderProfile mCamcorderProfile = CamcorderProfile.get(ChooseFrontCamera ? Camera.CameraInfo.CAMERA_FACING_FRONT:Camera.CameraInfo.CAMERA_FACING_BACK,
-                CamcorderProfile.QUALITY_QCIF);
+                CamcorderProfile.QUALITY_480P);
         mMediaRecorder.setProfile(mCamcorderProfile);
         mMediaRecorder.setOutputFile(getOutputMediaFile(MEDIA_TYPE_VIDEO).toString());
 //        mMediaRecorder.setPreviewDisplay(mSurfaceHolder.getSurface());
@@ -244,7 +246,7 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
         } catch (IOException ioe) {
         }
 
-        GLES20.glClearColor(1.0f, 1.0f, 0.0f, 1.0f);
+        GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
         hProgram = loadShader(vss, fss);
     }
@@ -368,8 +370,25 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
 
     public void onSurfaceChanged(GL10 unused, int width, int height) {
         Log.i("Camera","onSurfaceChanged()");
-        GLES20.glViewport(0, 0, width, height);
+//        GLES20.glViewport(0, 0, width,height);
 
+
+//        Camera.Parameters param = mCamera.getParameters();
+//        List<Camera.Size> psize = param.getSupportedPreviewSizes();
+//        if (psize.size() > 0) {
+//            int i;
+//            for (i = 0; i < psize.size(); i++) {
+//                if (psize.get(i).width < width || psize.get(i).height < height)
+//                    break;
+//            }
+//            if (i > 0)
+//                i--;
+//            param.setPreviewSize(psize.get(i).width, psize.get(i).height);
+//            //Log.i("mr","ssize: "+psize.get(i).width+", "+psize.get(i).height);
+//        }
+////---
+        int VideoPreviewWidth = 400, VideoPreviewHeight = 300;
+////        GLES20.glViewport(0, 0,300, height);
         Camera.Parameters param = mCamera.getParameters();
         List<Camera.Size> psize = param.getSupportedPreviewSizes();
         if (psize.size() > 0) {
@@ -380,9 +399,33 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
             }
             if (i > 0)
                 i--;
-            param.setPreviewSize(psize.get(i).width, psize.get(i).height);
+            VideoPreviewHeight = psize.get(i).width;
+            VideoPreviewWidth =  psize.get(i).height;
+            param.setPreviewSize(VideoPreviewHeight,VideoPreviewWidth);
             //Log.i("mr","ssize: "+psize.get(i).width+", "+psize.get(i).height);
         }
+
+        int videoContainerWidth , videoContainerHeight;
+        int glViewHeight, glViewWidth;
+        videoContainerWidth = mView.getWidth();
+        videoContainerHeight = mView.getHeight();
+        int ox = 0,oy = 0;
+        float videoRatio = (float)VideoPreviewWidth / (float)VideoPreviewHeight;
+        float containerRatio = (float)videoContainerWidth / (float)videoContainerHeight;
+        if(videoRatio < containerRatio) { // fixed height
+            ox = (int)((float)videoContainerWidth *(containerRatio - videoRatio)/2.0);
+            oy = 0;
+            glViewHeight = videoContainerHeight;
+            glViewWidth = (int)((float)glViewHeight *  videoRatio);
+
+        }
+        else {
+            oy = (int)((float)videoContainerHeight *(-containerRatio + videoRatio)/2.0);
+            ox = 0;
+            glViewWidth = videoContainerWidth;
+            glViewHeight = (int)((float)glViewWidth / videoRatio);
+        }
+
 
 //        param.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
 //        param.set("orientation", "landscape");
@@ -390,6 +433,7 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
 //        param.setRotation(180);
         mCamera.setParameters(param);
         mCamera.startPreview();
+        GLES20.glViewport(ox, oy, glViewWidth,glViewHeight);
     }
 
     private void initTex() {
