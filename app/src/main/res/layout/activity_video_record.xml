@@ -24,13 +24,5 @@
             android:onClick="onClick"
             android:background="@android:color/transparent"
             android:src="@drawable/player_record" />
-        <ImageButton
-            android:id="@+id/stop"
-            android:layout_width="66dp"
-            android:layout_height="66dp"
-            android:onClick="onClick"
-            android:background="@android:color/transparent"
-            android:scaleType="fitCenter"
-            android:src="@drawable/player_stop" />
     </LinearLayout>
 </RelativeLayout>

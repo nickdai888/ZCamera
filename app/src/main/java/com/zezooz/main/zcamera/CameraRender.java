@@ -163,7 +163,12 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
     public void stopMediaRecorder() {
         if (mMediaRecorder != null) {
             if (mIsRecording) {
-                mMediaRecorder.stop();
+                try{
+                    mMediaRecorder.stop();
+                }catch(RuntimeException stopException){
+                    //handle cleanup here
+                }
+
                 mCamera.lock();
                 mMediaRecorder.reset();
                 mMediaRecorder.release();

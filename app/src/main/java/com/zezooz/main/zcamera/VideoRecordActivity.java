@@ -6,6 +6,7 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.PowerManager;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -17,12 +18,15 @@ public class VideoRecordActivity extends AppCompatActivity {
     private CameraSurfaceView mView;
     private PowerManager.WakeLock mWL;
     private ImageButton recordButton;
-    private ImageButton  stopButton;
+//    private ImageButton stopButton;
+    private boolean buttonStatusRecording;
+
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Utils.context = this;
+        buttonStatusRecording = false;
         // full screen & full brightness
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
@@ -39,27 +43,38 @@ public class VideoRecordActivity extends AppCompatActivity {
         mWL = ((PowerManager) getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.FULL_WAKE_LOCK, "WakeLock");
         mWL.acquire();
         setContentView(R.layout.activity_video_record);
-        mView = (CameraSurfaceView)this.findViewById(R.id.surfaceview);
+        mView = (CameraSurfaceView) this.findViewById(R.id.surfaceview);
 //      mView = new CameraSurfaceView(this);
 //      setContentView(mView);
         recordButton = (ImageButton)this.findViewById(R.id.record);
-        stopButton = (ImageButton)this.findViewById(R.id.stop);
-        stopButton.setVisibility(View.GONE);
+//        stopButton = (ImageButton)this.findViewById(R.id.stop);
+//        stopButton.setVisibility(View.VISIBLE);
+        updateRecordButton();
     }
 
+    private void updateRecordButton() {
+        if (buttonStatusRecording) {
+//            recordButton.setBackgroundResource(R.drawable.player_record);
+            recordButton.setImageDrawable(getResources().getDrawable(R.drawable.player_stop));
+//            recordButton.setImageDrawable( ContextCompat.getDrawable(this, R.drawable.player_record));
+
+        } else {
+//            recordButton.setBackgroundResource(R.drawable.player_stop);
+            recordButton.setImageDrawable(getResources().getDrawable(R.drawable.player_record));
+        }
+    }
 
     public void onClick(View source) {
         switch (source.getId()) {
             // 单击录制按钮
             case R.id.record:
-                mView.getCameraRender().startMediaRecorder();
-                recordButton.setVisibility(View.GONE);
-                stopButton.setVisibility(View.VISIBLE);
-                break;
-            case R.id.stop:
-                mView.getCameraRender().stopMediaRecorder();
-                recordButton.setVisibility(View.VISIBLE);
-                stopButton.setVisibility(View.GONE);
+                if(!buttonStatusRecording) {
+                    mView.getCameraRender().startMediaRecorder();
+                }else{
+                    mView.getCameraRender().stopMediaRecorder();
+                }
+                buttonStatusRecording = !buttonStatusRecording;
+                updateRecordButton();
                 break;
         }
     }
@@ -82,7 +97,7 @@ public class VideoRecordActivity extends AppCompatActivity {
 
 
     //check if there is camera
-    private boolean checkCamera(){
+    private boolean checkCamera() {
         return this.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA);
     }
 
