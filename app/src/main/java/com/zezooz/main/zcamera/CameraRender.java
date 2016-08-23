@@ -136,7 +136,9 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
 
 
     public void startMediaRecorder() {
+        mCamera.stopPreview(); //compatibility for svmsung
         mCamera.unlock();
+
         mIsRecording = true;
         mMediaRecorder = new MediaRecorder();
         mMediaRecorder.reset();
