@@ -7,7 +7,7 @@ void main()
 {
     vec2 v_texCoord = texCoord;
     vec4 clraverge=vec4(0,0,0,0);
-    float GlowRange = 2.0;
+    float GlowRange = 10.0;
     float GlowExpand  = 0.;
     //textureSize(sTexture, 0);
     vec2 TextureSize = vec2(480.0,320.0);

@@ -56,7 +56,14 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
 
     private int[] hTex;
     private FloatBuffer pVertex;
-    private FloatBuffer pTexCoord;
+    private FloatBuffer pTexCoord_0;
+    private FloatBuffer pTexCoord_90;
+    private FloatBuffer pTexCoord_180;
+    private FloatBuffer pTexCoord_270;
+    private int frontCameraRoatateDegree;
+    private int backCameraRoatateDegree;
+    private int currCameraRoatateDegree;
+
     private int hProgram;
     private boolean mIsRecording;
     private MediaRecorder mMediaRecorder;
@@ -68,23 +75,61 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
 
     private CameraSurfaceView mView;
 
-
+    private boolean ChooseFrontCamera = false;
     public static final int MEDIA_TYPE_IMAGE = 1;
     public static final int MEDIA_TYPE_VIDEO = 2;
 
     CameraRender(CameraSurfaceView view) {
         mView = view;
         float[] vtmp = {1.0f, -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f};
-//        float[] ttmp = {1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f};
-        float[] ttmp = {  1.0f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f,  0.0f, 1.0f,};
+
+        float[] ttmp_0 = {1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+        float[] ttmp_90 = {1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};//ok
+        float[] ttmp_180 = {1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f};
+        float[] ttmp_270 = {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f};//
+
+//        float[] ttmp = {  1.0f, 0.0f,  1.0f, 1.0f, 0.0f, 0.0f,  0.0f, 1.0f,};
         pVertex = ByteBuffer.allocateDirect(8 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
         pVertex.put(vtmp);
         pVertex.position(0);
-        pTexCoord = ByteBuffer.allocateDirect(8 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
-        pTexCoord.put(ttmp);
-        pTexCoord.position(0);
+
+        pTexCoord_0 = ByteBuffer.allocateDirect(8 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        pTexCoord_0.put(ttmp_0);
+        pTexCoord_0.position(0);
+
+        pTexCoord_90 = ByteBuffer.allocateDirect(8 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        pTexCoord_90.put(ttmp_90);
+        pTexCoord_90.position(0);
+
+        pTexCoord_180 = ByteBuffer.allocateDirect(8 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        pTexCoord_180.put(ttmp_180);
+        pTexCoord_180.position(0);
+
+        pTexCoord_270 = ByteBuffer.allocateDirect(8 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+        pTexCoord_270.put(ttmp_270);
+        pTexCoord_270.position(0);
 
         mSurfaceHolder = view.getHolder();
+    }
+
+    private FloatBuffer getRightTexCoordBuffer(int degree){
+        if((degree == 0)||(degree == 360))
+        {
+            return pTexCoord_0;
+        }
+        else if(degree == 90)
+        {
+            return pTexCoord_90;
+        }
+        else if(degree == 180){
+            return pTexCoord_180;
+        }
+        else if(degree == 270){
+            return pTexCoord_270;
+        }
+        else {
+            return pTexCoord_0;
+        }
     }
 
 
@@ -96,8 +141,8 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
         mMediaRecorder.setCamera(mCamera);
         mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
         mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
-        CamcorderProfile mCamcorderProfile = CamcorderProfile.get(Camera.CameraInfo.CAMERA_FACING_BACK,
-                CamcorderProfile.QUALITY_480P);
+        CamcorderProfile mCamcorderProfile = CamcorderProfile.get(ChooseFrontCamera ? Camera.CameraInfo.CAMERA_FACING_FRONT:Camera.CameraInfo.CAMERA_FACING_BACK,
+                CamcorderProfile.QUALITY_QCIF);
         mMediaRecorder.setProfile(mCamcorderProfile);
         mMediaRecorder.setOutputFile(getOutputMediaFile(MEDIA_TYPE_VIDEO).toString());
 //        mMediaRecorder.setPreviewDisplay(mSurfaceHolder.getSurface());
@@ -204,9 +249,43 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
         hProgram = loadShader(vss, fss);
     }
 
+    private static final int FRONT = 1;//前置摄像头标记
+    private static final int BACK = 2;//后置摄像头标记
+    private int currentCameraType = -1;//当前打开的摄像头标记
+    private Camera openCamera(int type){
+        int frontIndex =-1;
+        int backIndex = -1;
+        int cameraCount = Camera.getNumberOfCameras();
+        Camera.CameraInfo info = new Camera.CameraInfo();
+        for(int cameraIndex = 0; cameraIndex<cameraCount; cameraIndex++){
+            Camera.getCameraInfo(cameraIndex, info);
+            if(info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT){
+                frontIndex = cameraIndex;
+                frontCameraRoatateDegree = info.orientation;
+            }else if(info.facing == Camera.CameraInfo.CAMERA_FACING_BACK){
+                backIndex = cameraIndex;
+                backCameraRoatateDegree = info.orientation;
+            }
+        }
+
+        currentCameraType = type;
+        if(type == FRONT && frontIndex != -1){
+            currCameraRoatateDegree = frontCameraRoatateDegree;
+            Log.i("Camera", "Current Front Rotation is:" + String.valueOf(currCameraRoatateDegree));
+
+            return Camera.open(frontIndex);
+        }else if(type == BACK && backIndex != -1){
+            Log.i("Camera", "Current Back Rotation is:" + String.valueOf(currCameraRoatateDegree));
+            currCameraRoatateDegree = backCameraRoatateDegree;
+            return Camera.open(backIndex);
+        }
+        return null;
+    }
+
     private void initPreview() {
-        mCamera = Camera.open();
-        setCameraDisplayOrientation(Camera.CameraInfo.CAMERA_FACING_FRONT, mCamera);
+//        mCamera = Camera.open();
+        mCamera = openCamera(ChooseFrontCamera?FRONT:BACK);
+        setCameraDisplayOrientation(ChooseFrontCamera? Camera.CameraInfo.CAMERA_FACING_FRONT: Camera.CameraInfo.CAMERA_FACING_BACK, mCamera);
         setFocusMode();
 //        mCamera.startPreview();
     }
@@ -253,7 +332,7 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
         } else {  // back-facing
             result = (info.orientation - degrees + 360) % 360;
         }
-        camera.setDisplayOrientation(result);
+//        camera.setDisplayOrientation(result);
     }
 
 
@@ -278,6 +357,7 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
         GLES20.glUniform1i(th, 0);
 
         GLES20.glVertexAttribPointer(ph, 2, GLES20.GL_FLOAT, false, 4 * 2, pVertex);
+        FloatBuffer pTexCoord = getRightTexCoordBuffer(currCameraRoatateDegree);
         GLES20.glVertexAttribPointer(tch, 2, GLES20.GL_FLOAT, false, 4 * 2, pTexCoord);
         GLES20.glEnableVertexAttribArray(ph);
         GLES20.glEnableVertexAttribArray(tch);
@@ -287,6 +367,7 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
     }
 
     public void onSurfaceChanged(GL10 unused, int width, int height) {
+        Log.i("Camera","onSurfaceChanged()");
         GLES20.glViewport(0, 0, width, height);
 
         Camera.Parameters param = mCamera.getParameters();
@@ -306,6 +387,7 @@ public class CameraRender implements GLSurfaceView.Renderer, SurfaceTexture.OnFr
 //        param.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
 //        param.set("orientation", "landscape");
         param.set("orientation", "portrait");
+//        param.setRotation(180);
         mCamera.setParameters(param);
         mCamera.startPreview();
     }
